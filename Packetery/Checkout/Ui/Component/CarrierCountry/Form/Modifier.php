@@ -57,38 +57,39 @@ class Modifier implements ModifierInterface
         $staticCarriers = $this->carrierFacade->getPacketeryAbstractCarriers();
         usort(
             $staticCarriers,
-            function (Carrier\AbstractCarrier $staticCarrier) {
+            static function (Carrier\AbstractCarrier $staticCarrier) {
                 return $staticCarrier instanceof Carrier\Imp\Packetery\Carrier;             // Packetery is always first
             }
         );
 
         foreach ($staticCarriers as $staticCarrier) {
-            $packeteryBrain = $staticCarrier->getPacketeryBrain();
-            $methods = $packeteryBrain->getMethodSelect()->getMethods();
+            $brain = $staticCarrier->getPacketeryBrain();
+            $methods = $brain->getMethodSelect()->getMethods();
             usort(
                 $methods,
-                function (string $method) {
+                static function (string $method) {
                     return $method === Methods::PICKUP_POINT_DELIVERY; // PP methods are first in list
                 }
             );
 
             foreach ($methods as $method) {
                 // each hybrid carrier represent form fieldset as row
-                $carriers = $packeteryBrain->findConfigurableDynamicCarriers($country, [$method]);
+                $dynamicCarriers = $brain->findConfigurableDynamicCarriers($country, [$method]);
 
-                if ($packeteryBrain->isAssignableToPricingRule()) {
+                if ($dynamicCarriers === null) {
                     // static carrier has no dynamic carriers
                     // static wrapping carriers are omitted
-                    $availableCountries = $packeteryBrain->getAvailableCountries([$method]);
-                    if (in_array($country, $availableCountries)) {
+                    $availableCountries = $brain->getAvailableCountries([$method]);
+                    if (in_array($country, $availableCountries, true)) {
                         $hybridCarrier = HybridCarrier::fromAbstract($staticCarrier, $method, $country);
                         array_unshift($hybridCarriers, $hybridCarrier);
                     }
-                }
 
-                foreach ($carriers as $carrier) {
-                    $hybridCarrier = HybridCarrier::fromAbstractDynamic($staticCarrier, $carrier, $method, $country);
-                    $hybridCarriers[] = $hybridCarrier;
+                } else {
+                    foreach ($dynamicCarriers as $dynamicCarrier) {
+                        $hybridCarrier = HybridCarrier::fromAbstractDynamic($staticCarrier, $dynamicCarrier, $method, $country);
+                        $hybridCarriers[] = $hybridCarrier;
+                    }
                 }
             }
         }

@@ -10,37 +10,37 @@ class AllowedMethodsTest extends \Packetery\Checkout\Test\BaseTest
 {
     public function testGetFinalAllowedMethods() {
         $this->assertFinals(
-            [Methods::ADDRESS_DELIVERY],
-            [Methods::ADDRESS_DELIVERY],
-            [Methods::ADDRESS_DELIVERY]
+            [Methods::PACKETA_HOME_DELIVERY],
+            [Methods::PACKETA_HOME_DELIVERY],
+            [Methods::PACKETA_HOME_DELIVERY]
         );
 
         $this->assertFinals(
             [Methods::PICKUP_POINT_DELIVERY],
-            [Methods::ADDRESS_DELIVERY],
+            [Methods::PACKETA_HOME_DELIVERY],
             []
         );
 
         $this->assertFinals(
             [Methods::PICKUP_POINT_DELIVERY, 'adasdadadadasdad'],
-            [Methods::ADDRESS_DELIVERY],
+            [Methods::PACKETA_HOME_DELIVERY],
             []
         );
 
         $this->assertFinals(
-            [Methods::PICKUP_POINT_DELIVERY, Methods::ADDRESS_DELIVERY, 'adasdadadadasdad'],
+            [Methods::PICKUP_POINT_DELIVERY, Methods::PACKETA_HOME_DELIVERY, 'adasdadadadasdad'],
             [Methods::PICKUP_POINT_DELIVERY],
             [Methods::PICKUP_POINT_DELIVERY]
         );
 
         $this->assertFinals(
-            [Methods::ADDRESS_DELIVERY],
-            [Methods::PICKUP_POINT_DELIVERY, Methods::ADDRESS_DELIVERY, 'adasdadadadasdad'],
-            [Methods::ADDRESS_DELIVERY]
+            [Methods::PACKETA_HOME_DELIVERY],
+            [Methods::PICKUP_POINT_DELIVERY, Methods::PACKETA_HOME_DELIVERY, 'adasdadadadasdad'],
+            [Methods::PACKETA_HOME_DELIVERY]
         );
 
         $this->assertFinals(
-            [Methods::ADDRESS_DELIVERY],
+            [Methods::PACKETA_HOME_DELIVERY],
             ['adasdadadadasdad'],
             []
         );

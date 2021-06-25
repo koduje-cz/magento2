@@ -73,31 +73,25 @@ class Brain extends \Packetery\Checkout\Model\Carrier\AbstractBrain
     /**
      * @inheridoc
      */
-    protected static function getResolvableDestinationData(): array {
+    protected static function getResolvableDestinationData(): array
+    {
         return [];
     }
 
-    /**
-     * @return bool
-     */
-    public function isAssignableToPricingRule(): bool {
-        return false;
-    }
-
-
-    public function getDynamicCarrierById(int $dynamicCarrierId): ?\Packetery\Checkout\Model\Carrier {
-
-        return $this->carrierCollectionFactory->create()->getItemByColumnValue('carrier_id', $dynamicCarrierId);
+    public function getDynamicCarrierById(int $dynamicCarrierId): ?\Packetery\Checkout\Model\Carrier
+    {
+        return $this->carrierCollectionFactory->create()
+          ->getItemByColumnValue('carrier_id', $dynamicCarrierId);
     }
 
     /**
      * @return array
      */
-    public function findResolvableDynamicCarriers(): array {
+    public function findResolvableDynamicCarriers(): array
+    {
         /** @var \Packetery\Checkout\Model\ResourceModel\Carrier\Collection $collection */
         $collection = $this->carrierCollectionFactory->create();
-        $collection->resolvableOnly();
-        $collection->whereCarrierIdNotIn(\Packetery\Checkout\Model\Carrier\Facade::getAllImplementedBranchIds());
+        $collection->supportedOnly();
         return $collection->getItems();
     }
 
@@ -106,23 +100,22 @@ class Brain extends \Packetery\Checkout\Model\Carrier\AbstractBrain
      * @param array $methods
      * @return \Packetery\Checkout\Model\Carrier[]
      */
-    public function findConfigurableDynamicCarriers(string $country, array $methods): array {
+    public function findConfigurableDynamicCarriers(string $country, array $methods): ?array
+    {
         /** @var \Packetery\Checkout\Model\ResourceModel\Carrier\Collection $collection */
         $collection = $this->carrierCollectionFactory->create();
-        $collection->configurableOnly();
+
+        $collection->supportedOnly();
         $collection->whereCountry($country);
         $collection->forDeliveryMethods($methods);
-        $collection->whereCarrierIdNotIn(\Packetery\Checkout\Model\Carrier\Facade::getAllImplementedBranchIds());
 
         return $collection->getItems();
     }
 
 
-    public function resolvePointId(string $method, string $countryId, ?\Packetery\Checkout\Model\Carrier $dynamicCarrier = null): ?int {
-        if ($dynamicCarrier === null) {
-            throw new \Exception('Dynamic carrier was not passed');
-        }
-
+    public function resolvePointIdDynamic(string $method, string $countryId, \Packetery\Checkout\Model\Carrier $dynamicCarrier): ?int
+    {
+        // todo přesunout o úroveň výš?
         if ($this->validateDynamicCarrier($method, $countryId, $dynamicCarrier) === false) {
             return null;
         }
@@ -131,7 +124,8 @@ class Brain extends \Packetery\Checkout\Model\Carrier\AbstractBrain
     }
 
 
-    public function updateDynamicCarrierName(string $carrierName, \Packetery\Checkout\Model\Carrier $dynamicCarrier): void {
+    public function updateDynamicCarrierName(string $carrierName, \Packetery\Checkout\Model\Carrier $dynamicCarrier): void
+    {
         $collection = $this->carrierCollectionFactory->create();
         $collection->addFilter('carrier_id', $dynamicCarrier->getCarrierId());
         $collection->setDataToAll(
@@ -143,12 +137,12 @@ class Brain extends \Packetery\Checkout\Model\Carrier\AbstractBrain
     }
 
 
-    public function validateDynamicCarrier(string $method, string $countryId, \Packetery\Checkout\Model\Carrier $dynamicCarrier): bool {
+    public function validateDynamicCarrier(string $method, string $countryId, \Packetery\Checkout\Model\Carrier $dynamicCarrier): bool
+    {
         if ($dynamicCarrier->getDeleted() === true) {
             return false;
         }
 
-        // todo: nevím, jestli můžu smazat, obávám se, že se tímto způsobem rozhoduje v collectRates a resolvePoint jestli je dyn carrier dostupný pro zadanou zemi
         if ($dynamicCarrier->getCountry() !== $countryId) {
             return false;
         }
@@ -165,6 +159,9 @@ class Brain extends \Packetery\Checkout\Model\Carrier\AbstractBrain
      * @return array
      */
     public function getAvailableCountries(array $methods): array {
+
+        // todo: přidej cache, volá se opakovaně ve smyčce pro každého dynamického carriera, zde se imho pokládá pořád dokola ten samý dotaz
+
         /** @var \Packetery\Checkout\Model\ResourceModel\Carrier\Collection $collection */
         $collection = $this->carrierCollectionFactory->create();
         $collection->forDeliveryMethods($methods);
@@ -187,7 +184,7 @@ class Brain extends \Packetery\Checkout\Model\Carrier\AbstractBrain
         }
 
         $methods = [];
-        foreach ($this->getFinalAllowedMethodsDynamic($config, $dynamicConfig, $this->getMethodSelect()) as $selectedMethod) {
+        foreach ($this->getFinalAllowedMethods($dynamicConfig, $this->getMethodSelect()) as $selectedMethod) {
             if ($this->isAvailableForCollection($selectedMethod, $request->getDestCountryId(), $dynamicCarrier) === false) {
                 continue;
             }
@@ -201,7 +198,7 @@ class Brain extends \Packetery\Checkout\Model\Carrier\AbstractBrain
     protected function isAvailableForCollection(string $method, string $countryId, \Packetery\Checkout\Model\Carrier $dynamicCarrier): bool
     {
         if ($method !== Methods::PICKUP_POINT_DELIVERY) {
-            if ($this->resolvePointId($method, $countryId, $dynamicCarrier) === null) {
+            if ($this->resolvePointIdDynamic($method, $countryId, $dynamicCarrier) === null) {
                 return false;
             }
         }
@@ -211,8 +208,13 @@ class Brain extends \Packetery\Checkout\Model\Carrier\AbstractBrain
     }
 
 
-    public function getFinalAllowedMethodsDynamic(Config $config, DynamicConfig $dynamicConfig, AbstractMethodSelect $methodSelect): array {
-        $final = $this->getFinalAllowedMethods($config, $methodSelect);
-        return array_intersect($dynamicConfig->getAllowedMethods(), $final);
+    /**
+     * @param DynamicConfig $config     we always get DynamicConfig
+     * @param AbstractMethodSelect $methodSelect
+     * @return array
+     */
+    public function getFinalAllowedMethods(AbstractConfig $config, AbstractMethodSelect $methodSelect): array {
+        $staticCarrierFinalMethods = parent::getFinalAllowedMethods($config, $methodSelect);
+        return array_intersect($config->getAllowedMethods(), $staticCarrierFinalMethods);
     }
 }

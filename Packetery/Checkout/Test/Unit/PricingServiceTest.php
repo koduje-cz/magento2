@@ -116,17 +116,17 @@ class PricingServiceTest extends BaseTest
             $this->createWeightRule(100.01, 4.9),
         ];
 
-        $methods = $this->createMethodsWithLabels([Methods::ADDRESS_DELIVERY]);
+        $methods = $this->createMethodsWithLabels([Methods::PACKETA_HOME_DELIVERY]);
         $result = $this->collectRates($pricingRule, $weightRules, 5, 300, $pricingRule->getCountryId(), 10.0, 333.58, $methods);
         $this->assertRateMethod($result, [
             'cost' => 100.01, // free shipping
-            'method' => Methods::ADDRESS_DELIVERY, // for CZ there is address delivery
+            'method' => Methods::PACKETA_HOME_DELIVERY, // for CZ there is address delivery
         ]);
 
         $result = $this->collectRates($pricingRule, $weightRules, 5, 400, $pricingRule->getCountryId(), 10.0, 333.58, $methods);
         $this->assertRateMethod($result, [
             'cost' => 0, // free shipping
-            'method' => Methods::ADDRESS_DELIVERY, // for CZ there is address delivery
+            'method' => Methods::PACKETA_HOME_DELIVERY, // for CZ there is address delivery
         ]);
 
         $result = $this->collectRates($pricingRule, $weightRules, 1000000, 400, $pricingRule->getCountryId(), 10.0, 333.58, $methods);
@@ -136,7 +136,7 @@ class PricingServiceTest extends BaseTest
         $result = $this->collectRates($pricingRule, $weightRules, 10, 400, $pricingRule->getCountryId(), 10.0, 333.58, $methods);
         $this->assertEmpty($result->getAllRates(), 'empty methods results in empty result');
 
-        $methods = $this->createMethodsWithLabels([Methods::ADDRESS_DELIVERY, Methods::PICKUP_POINT_DELIVERY]);
+        $methods = $this->createMethodsWithLabels([Methods::PACKETA_HOME_DELIVERY, Methods::PICKUP_POINT_DELIVERY]);
         $result = $this->collectRates($pricingRule, $weightRules, 10, 400, $pricingRule->getCountryId(), 10.0, 333.58, $methods);
         $this->assertNotEmpty($result->getAllRates());
     }

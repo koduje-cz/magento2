@@ -82,7 +82,6 @@ class OrderPlaceAfter implements \Magento\Framework\Event\ObserverInterface
         $postData = json_decode(file_get_contents("php://input"));
         $pointId = NULL;
         $pointName = NULL;
-        $point = NULL;
         $isCarrier = false;
         $carrierPickupPoint = null;
 
@@ -102,20 +101,26 @@ class OrderPlaceAfter implements \Magento\Framework\Event\ObserverInterface
                 /** @var \Packetery\Checkout\Model\Carrier\AbstractCarrier $carrier */
                 $carrier = $this->carrierFactory->create($shippingMethod['carrier_code']);
 
-                $packeteryBrain = $carrier->getPacketeryBrain();
+                $brain = $carrier->getPacketeryBrain();
 
                 $dynamicCarrier = null;
                 $dynamicCarrierId = $deliveryMethod->getDynamicCarrierId();
                 if ($dynamicCarrierId) {
-                    /** @var Brain $packeteryBrain */
-                    $dynamicCarrier = $packeteryBrain->getDynamicCarrierById($dynamicCarrierId);
+                    /** @var Brain $brain */
+                    $dynamicCarrier = $brain->getDynamicCarrierById($dynamicCarrierId);
+
+                    $pointId = $brain->resolvePointIdDynamic(
+                        $deliveryMethod->getMethod(),
+                        $order->getShippingAddress()->getCountryId(),
+                        $dynamicCarrier
+                    );
+                } else {
+                    $pointId = $brain->resolvePointId(
+                        $deliveryMethod->getMethod(),
+                        $order->getShippingAddress()->getCountryId()
+                    );
                 }
 
-                $pointId = $packeteryBrain->resolvePointId(
-                    $deliveryMethod->getMethod(),
-                    $order->getShippingAddress()->getCountryId(),
-                    $dynamicCarrier
-                );
 
                 $pointName = '';
             }

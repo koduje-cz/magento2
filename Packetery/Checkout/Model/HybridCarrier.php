@@ -17,11 +17,13 @@ class HybridCarrier extends \Magento\Framework\DataObject
         $hybridCarrier = new self();
         $hybridCarrier->setData('carrier_code', $carrier->getCarrierCode());
         $hybridCarrier->setData('carrier_id', $dynamicCarrier->getCarrierId());
+
         $hybridCarrier->setData('name', $dynamicCarrier->getName());
         $hybridCarrier->setData('carrier_name', $dynamicCarrier->getFinalCarrierName());
         $hybridCarrier->setData('country', $country);
         $hybridCarrier->setData('method', $method);
         $hybridCarrier->setData('method_code', (new MethodCode($method, $dynamicCarrier->getCarrierId()))->toString());
+
         return $hybridCarrier;
     }
 
@@ -34,7 +36,7 @@ class HybridCarrier extends \Magento\Framework\DataObject
     public static function fromAbstract(\Packetery\Checkout\Model\Carrier\AbstractCarrier $carrier, string $method, string $country): self {
         $hybridCarrier = new self();
         $hybridCarrier->setData('carrier_code', $carrier->getCarrierCode());
-        $hybridCarrier->setData('carrier_id');
+        $hybridCarrier->setData('carrier_id', null);
 
         $postfix = '';
         if (\Packetery\Checkout\Model\Carrier\Methods::isAnyAddressDelivery($method)) {
@@ -44,11 +46,13 @@ class HybridCarrier extends \Magento\Framework\DataObject
             $postfix = 'PP';
         }
 
-        $hybridCarrier->setData('name', "$country {$carrier->getPacketeryConfig()->getTitle()} $postfix");
-        $hybridCarrier->setData('carrier_name', $carrier->getPacketeryConfig()->getTitle());
+        $title = $carrier->getPacketeryConfig()->getTitle();
+        $hybridCarrier->setData('name', "$country $title $postfix");
+        $hybridCarrier->setData('carrier_name', $title);
         $hybridCarrier->setData('country', $country);
         $hybridCarrier->setData('method', $method);
         $hybridCarrier->setData('method_code', (new MethodCode($method, null))->toString());
+
         return $hybridCarrier;
     }
 

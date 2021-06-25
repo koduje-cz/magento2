@@ -32,7 +32,7 @@ abstract class AbstractCarrier extends \Magento\Shipping\Model\Carrier\AbstractC
         \Packetery\Checkout\Model\Carrier\AbstractBrain $brain,
         array $data = []
     ) {
-        $this->_code = $brain->getCarrierCode();
+        $this->_code = $brain::getCarrierCodeStatic();
         parent::__construct($scopeConfig, $rateErrorFactory, $logger, $data);
         $this->packeteryBrain = $brain;
         $this->packeteryConfig = $brain->createConfig($this);
@@ -51,19 +51,9 @@ abstract class AbstractCarrier extends \Magento\Shipping\Model\Carrier\AbstractC
         return $result;
     }
 
-    /**
-     * @return \Packetery\Checkout\Model\Carrier\AbstractBrain
-     */
-    public function getPacketeryBrain(): AbstractBrain {
-        return $this->packeteryBrain;
-    }
+    abstract public function getPacketeryBrain(): AbstractBrain;
 
-    /**
-     * @return \Packetery\Checkout\Model\Carrier\Config\AbstractConfig
-     */
-    public function getPacketeryConfig(): AbstractConfig {
-        return $this->packeteryConfig;
-    }
+    abstract public function getPacketeryConfig(): AbstractConfig;
 
 
     /**
@@ -73,14 +63,15 @@ abstract class AbstractCarrier extends \Magento\Shipping\Model\Carrier\AbstractC
      */
     public function getAllowedMethods(): array
     {
-        $result = [];
+        $labelledMethods = [];
+
         $select = $this->packeteryBrain->getMethodSelect();
         $selectedMethods = $this->packeteryBrain->getFinalAllowedMethods($this->getPacketeryConfig(), $select);
 
-        foreach ($selectedMethods as $selectedMethod) {
-            $result[$selectedMethod] = $select->getLabelByValue($selectedMethod);
+        foreach ($selectedMethods as $method) {
+            $labelledMethods[$method] = $select->getLabelByValue($method);
         }
 
-        return $result;
+        return $labelledMethods;
     }
 }

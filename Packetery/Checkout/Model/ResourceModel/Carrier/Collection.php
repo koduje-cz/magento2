@@ -27,22 +27,6 @@ class Collection extends \Magento\Framework\Model\ResourceModel\Db\Collection\Ab
     }
 
     /**
-     *  For frontend checkout
-     */
-    public function resolvableOnly(): void {
-        $this->whereDeleted(false);
-        $this->supportedOnly();
-    }
-
-    /**
-     * For admin configuration page
-     */
-    public function configurableOnly(): void {
-        $this->whereDeleted(false);
-        $this->supportedOnly();
-    }
-
-    /**
      * @param bool $value
      */
     public function whereDeleted(bool $value): void {
@@ -50,19 +34,14 @@ class Collection extends \Magento\Framework\Model\ResourceModel\Db\Collection\Ab
     }
 
     /**
-     * @param int[] $excludeCarrierIds
-     */
-    public function whereCarrierIdNotIn(array $excludeCarrierIds): void {
-        $this->addFieldToFilter('main_table.carrier_id', ['nin' => $excludeCarrierIds]);
-    }
-
-    /**
      * dynamic carriers with attributes not supported by Packetery extension are omitted
      */
-    private function supportedOnly(): void {
+    public function supportedOnly(): void {
+        $this->whereDeleted(false);
         $this->addFieldToFilter('main_table.carrier_id', ['nin' => [257, 136, 134, 132]]); // večerní doručení todo implement ZIP code logic
         $this->addFilter('main_table.disallows_cod', 0); // todo implement payment method filter
         $this->addFilter('main_table.customs_declarations', 0); // todo what does it require? New order edit form fields?
+        $this->addFieldToFilter('main_table.carrier_id', ['nin' => \Packetery\Checkout\Model\Carrier\Facade::getAllImplementedBranchIds()]);    // dynamic carriers implemented with static ones
     }
 
     /**
@@ -70,13 +49,6 @@ class Collection extends \Magento\Framework\Model\ResourceModel\Db\Collection\Ab
      */
     public function whereCountry(string $country): void {
         $this->addFilter('main_table.country', $country);
-    }
-
-    /**
-     * @param string $method
-     */
-    public function forDeliveryMethod(string $method): void {
-        $this->forDeliveryMethods([$method]);
     }
 
     /**

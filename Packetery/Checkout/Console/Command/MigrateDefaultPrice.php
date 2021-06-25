@@ -97,37 +97,42 @@ class MigrateDefaultPrice extends Command
                     continue;
                 }
 
-                $resolvedPricingRule = $this->pricingService->resolvePricingRule($allowedMethod, $country, \Packetery\Checkout\Model\Carrier\Imp\PacketeryPacketaDynamic\Brain::getCarrierCodeStatic());
+                // todo: proč dohledáváme pravidla pro dynamické dopravce, když v předchozí verzi neexistovali?
+                $packetaDynamicCarrierCode = \Packetery\Checkout\Model\Carrier\Imp\PacketeryPacketaDynamic\Brain::getCarrierCodeStatic();
+                $resolvedPricingRule = $this->pricingService->resolvePricingRule($allowedMethod, $country, $packetaDynamicCarrierCode);
 
-                if ($resolvedPricingRule === null) {
-                    $pricingRule = [
-                        'carrier_code' => \Packetery\Checkout\Model\Carrier\Imp\Packetery\Brain::getCarrierCodeStatic(),
-                        'carrier_id' => null,
-                        'enabled' => false,
-                        'free_shipment' => null,
-                        'country_id' => $country,
-                        'method' => $allowedMethod,
-                    ];
-
-                    $weightRules = [
-                        [
-                            'max_weight' => null,
-                            'price' => (float)$defaultPrice,
-                        ],
-                    ];
-
-                    try {
-                        $this->pricingruleRepository->savePricingRule($pricingRule, $weightRules);
-                    } catch (\Packetery\Checkout\Model\Exception\DuplicateCountry $e) {
-                        $output->writeln("Duplicate country for country $country and method $allowedMethod with fallback weight price $defaultPrice");
-                        continue;
-                    } catch (\Packetery\Checkout\Model\Exception\InvalidMaxWeight $e) {
-                        $output->writeln("Invalid weight for country $country and method $allowedMethod with fallback weight price $defaultPrice");
-                        continue;
-                    }
-
-                    $output->writeln("New pricing rule inserted for country $country and method $allowedMethod with fallback weight price $defaultPrice");
+                if ($resolvedPricingRule !== null) {
+                    continue;
                 }
+
+                $packetaCarrierCode = \Packetery\Checkout\Model\Carrier\Imp\Packetery\Brain::getCarrierCodeStatic();
+                $pricingRule = [
+                    'carrier_code' => $packetaCarrierCode,
+                    'carrier_id' => null,
+                    'enabled' => false,
+                    'free_shipment' => null,
+                    'country_id' => $country,
+                    'method' => $allowedMethod,
+                ];
+
+                $weightRules = [
+                    [
+                        'max_weight' => null,
+                        'price' => (float)$defaultPrice,
+                    ],
+                ];
+
+                try {
+                    $this->pricingruleRepository->savePricingRule($pricingRule, $weightRules);
+                } catch (\Packetery\Checkout\Model\Exception\DuplicateCountry $e) {
+                    $output->writeln("Duplicate country for country $country and method $allowedMethod with fallback weight price $defaultPrice");
+                    continue;
+                } catch (\Packetery\Checkout\Model\Exception\InvalidMaxWeight $e) {
+                    $output->writeln("Invalid weight for country $country and method $allowedMethod with fallback weight price $defaultPrice");
+                    continue;
+                }
+
+                $output->writeln("New pricing rule inserted for country $country and method $allowedMethod with fallback weight price $defaultPrice");
             }
         }
 

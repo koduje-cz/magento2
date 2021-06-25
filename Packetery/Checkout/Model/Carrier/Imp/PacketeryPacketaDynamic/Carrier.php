@@ -36,37 +36,38 @@ class Carrier extends \Packetery\Checkout\Model\Carrier\AbstractCarrier
      */
     public function collectRates(RateRequest $request)
     {
-        $result = $this->packeteryBrain->createRateResult();
+        $rates = $this->packeteryBrain->createRateResult();
         $dynamicCarriers = $this->packeteryBrain->findResolvableDynamicCarriers();
 
         foreach ($dynamicCarriers as $dynamicCarrier) {
             $dynamicCarrierResult = $this->packeteryBrain->collectRatesDynamic($this, $request, $dynamicCarrier);
             if ($dynamicCarrierResult !== null) {
-                $result->append($dynamicCarrierResult);
+                $rates->append($dynamicCarrierResult);
             }
         }
 
-        return $result;
+        return $rates;
     }
 
     /**
      * @return \Packetery\Checkout\Model\Carrier\Imp\PacketeryPacketaDynamic\Brain
      */
     public function getPacketeryBrain(): \Packetery\Checkout\Model\Carrier\AbstractBrain {
-        return parent::getPacketeryBrain();
+        return $this->packeteryBrain;
     }
 
     /**
      * @return \Packetery\Checkout\Model\Carrier\Imp\PacketeryPacketaDynamic\Config
      */
     public function getPacketeryConfig(): \Packetery\Checkout\Model\Carrier\Config\AbstractConfig {
-        return parent::getPacketeryConfig();
+        return $this->packeteryConfig;
     }
 
     /**
      * @return array
      */
     public function getAllowedMethods(): array {
+        // todo volá se v administraci, konfiguraci statického dopravce?  Packeta Carriers ale přeci má metodu Address Delivery...
         return [];
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Packetery\Checkout\Model\Carrier\Imp\Packetery;
 
 use Packetery\Checkout\Model\Carrier\Methods;
+use Packetery\Checkout\Model\ResourceModel\Carrier\Collection;
 
 class Brain extends \Packetery\Checkout\Model\Carrier\AbstractBrain
 {
@@ -55,14 +56,12 @@ class Brain extends \Packetery\Checkout\Model\Carrier\AbstractBrain
      */
     protected static function getResolvableDestinationData(): array {
         return [
-            Methods::ADDRESS_DELIVERY => [
-                'countryBranchIds' => [
-                    'CZ' => 106,
-                    'SK' => 131,
-                    'HU' => 4159,
-                    'RO' => 4161,
-                    'PL' => 4162,
-                ],
+            Methods::PACKETA_HOME_DELIVERY => [
+                'CZ' => 106,
+                'SK' => 131,
+                'HU' => 4159,
+                'RO' => 4161,
+                'PL' => 4162,
             ],
         ];
     }
@@ -71,7 +70,7 @@ class Brain extends \Packetery\Checkout\Model\Carrier\AbstractBrain
      * @return array
      */
     public static function getImplementedBranchIds(): array {
-        return array_values(self::getResolvableDestinationData()[Methods::ADDRESS_DELIVERY]['countryBranchIds']);
+        return array_values(self::getResolvableDestinationData()[Methods::PACKETA_HOME_DELIVERY]);
     }
 
     /**
@@ -79,23 +78,27 @@ class Brain extends \Packetery\Checkout\Model\Carrier\AbstractBrain
      * @return array
      */
     public function getAvailableCountries(array $methods): array {
-        $result = [];
+        $countries = [];
 
-        if (in_array(Methods::ADDRESS_DELIVERY, $methods)) {
-            $result = array_merge($result, array_keys($this::getResolvableDestinationData()[Methods::ADDRESS_DELIVERY]['countryBranchIds'] ?? []));
+        if (in_array(Methods::PACKETA_HOME_DELIVERY, $methods, true)) {
+            $countries = array_keys($this::getResolvableDestinationData()[Methods::PACKETA_HOME_DELIVERY]);
         }
 
-        if (in_array(Methods::PICKUP_POINT_DELIVERY, $methods)) {
-            $fixedCountries = $this->getBaseCountries();
+        if (in_array(Methods::PICKUP_POINT_DELIVERY, $methods, true)) {
+            $packetaPickupCountries = $this->getBaseCountries();
 
+            /** @var \Packetery\Checkout\Model\ResourceModel\Carrier\Collection $collection */
             $collection = $this->carrierCollectionFactory->create();
-            $collection->forDeliveryMethod(Methods::PICKUP_POINT_DELIVERY);
-            $countries = $collection->getColumnValues('country');
 
-            $result = array_merge($result, array_unique(array_merge($fixedCountries, $countries)));
+            /** @var \Packetery\Checkout\Model\ResourceModel\Carrier\Collection $collection */
+            $collection->forDeliveryMethods([Methods::PICKUP_POINT_DELIVERY]);
+            $carriersPickupCountries = $collection->getColumnValues('country');
+
+            $pickupPointCountries = array_unique(array_merge($packetaPickupCountries, $carriersPickupCountries));
+            $countries = array_merge($countries, $pickupPointCountries);
         }
 
-        return $result;
+        return $countries;
     }
 
     /**

@@ -50,13 +50,6 @@ abstract class AbstractBrain
     abstract public function createConfig(AbstractCarrier $carrier): AbstractConfig;
 
 
-    /** Can pricing rule be attached to abstract carrier of this namespace
-     * @return bool
-     */
-    public function isAssignableToPricingRule(): bool {
-        return true;
-    }
-
     /**
      * @param string $carrierCode
      * @param mixed $scope
@@ -70,14 +63,6 @@ abstract class AbstractBrain
             \Magento\Store\Model\ScopeInterface::SCOPE_STORE,
             $scope
         );
-    }
-
-    /** Returns unique carrier identified in packetery context
-     *
-     * @return string
-     */
-    public function getCarrierCode(): string {
-        return static::getCarrierCodeStatic();
     }
 
     /** Returns unique carrier identified in packetery context
@@ -103,13 +88,13 @@ abstract class AbstractBrain
     abstract protected static function getResolvableDestinationData(): array;
 
 
-    public function resolvePointId(string $method, string $countryId, ?\Packetery\Checkout\Model\Carrier $dynamicCarrier = null): ?int {
+    public function resolvePointId(string $method, string $countryId): ?int {
         $data = $this::getResolvableDestinationData();
-        return ($data[$method]['countryBranchIds'][$countryId] ?? null);
+        return ($data[$method][$countryId] ?? null);
     }
 
 
-    /** What Mordor branch ids does carrier implement
+    /** What branch ids does carrier implement
      * @return array
      */
     public static function getImplementedBranchIds(): array {
@@ -137,7 +122,7 @@ abstract class AbstractBrain
      * @return bool
      */
     public function isCollectionPossible(AbstractConfig $config): bool {
-        if ($this->httpRequest->getModuleName() == self::MULTI_SHIPPING_MODULE_NAME) {
+        if ($this->httpRequest->getModuleName() === self::MULTI_SHIPPING_MODULE_NAME) {
             return false;
         }
 
@@ -154,8 +139,8 @@ abstract class AbstractBrain
      * @param array $methods
      * @return \Packetery\Checkout\Model\Carrier[]
      */
-    public function findConfigurableDynamicCarriers(string $country, array $methods): array {
-        return [];
+    public function findConfigurableDynamicCarriers(string $country, array $methods): ?array {
+        return null;
     }
 
     /** Static + dynamic countries

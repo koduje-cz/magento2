@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Packetery\Checkout\Model\Carrier;
 
-use Packetery\Checkout\Model\Carrier\Imp\PacketeryPacketaDynamic\Brain;
 use Packetery\Checkout\Model\HybridCarrier;
 
 class Facade
@@ -28,36 +27,37 @@ class Facade
     }
 
 
-    public function updateCarrierName(string $carrierName, string $carrierCode, int $carrierId): void {
+    public function updateCarrierName(string $carrierName, string $carrierCode, int $carrierId): void
+    {
         $carrier = $this->getMagentoCarrier($carrierCode);
 
-        /** @var Brain $packetaDynamicBrain */
-        $packetaDynamicBrain = $carrier->getPacketeryBrain();
+        /** @var \Packetery\Checkout\Model\Carrier\Imp\PacketeryPacketaDynamic\Brain $dynamicBrain */
+        $dynamicBrain = $carrier->getPacketeryBrain();
 
         /** @var \Packetery\Checkout\Model\Carrier $dynamicCarrier */
-        $dynamicCarrier = $packetaDynamicBrain->getDynamicCarrierById($carrierId);
+        $dynamicCarrier = $dynamicBrain->getDynamicCarrierById($carrierId);
 
-        $packetaDynamicBrain->updateDynamicCarrierName($carrierName, $dynamicCarrier);
+        $dynamicBrain->updateDynamicCarrierName($carrierName, $dynamicCarrier);
     }
 
     /**
      * @param string $carrierCode
-     * @param int|null $carrierId
+     * @param int|null $dynamicCarrierId
      * @param string $method
      * @param string $country
      * @return \Packetery\Checkout\Model\HybridCarrier
      */
-    public function createHybridCarrier(string $carrierCode, ?int $carrierId, string $method, string $country): HybridCarrier {
+    public function createHybridCarrier(string $carrierCode, ?int $dynamicCarrierId, string $method, string $country): HybridCarrier
+    {
         $carrier = $this->getMagentoCarrier($carrierCode);
 
-        if ($carrierId) {
-            $dynamicCarrier = $this->getDynamicCarrier($carrier, $carrierId);
+        if ($dynamicCarrierId) {
+            $dynamicCarrier = $this->getDynamicCarrier($carrier, $dynamicCarrierId);
 
             if ($dynamicCarrier !== null) {
                 return HybridCarrier::fromAbstractDynamic($carrier, $dynamicCarrier, $method, $country);
             }
         }
-
 
         return HybridCarrier::fromAbstract($carrier, $method, $country);
     }
@@ -67,7 +67,8 @@ class Facade
      * @param $carrierId
      * @return bool
      */
-    public function isDynamicCarrier(string $carrierCode, $carrierId): bool {
+    public function isDynamicCarrier(string $carrierCode, $carrierId): bool
+    {
         $carrier = $this->getMagentoCarrier($carrierCode);
 
         if (is_numeric($carrierId)) {
@@ -83,52 +84,51 @@ class Facade
     /**
      * @return AbstractCarrier[]
      */
-    public function getPacketeryAbstractCarriers(): array {
-        $carriers = [];
-
-        foreach ($this->shippingConfig->getAllCarriers() as $carrier) {
-            if ($carrier instanceof AbstractCarrier) {
-                $carriers[] = $carrier;
+    public function getPacketeryAbstractCarriers(): array
+    {
+        return array_filter(
+            $this->shippingConfig->getAllCarriers(),
+            static function ($carrier) {
+                return $carrier instanceof AbstractCarrier;
             }
-        }
-
-        return $carriers;
+        );
     }
 
     /**
      * @return array
      */
-    public function getAllAvailableCountries(): array {
+    public function getAllAvailableCountries(): array
+    {
         $countries = [];
 
-        foreach ($this->getPacketeryAbstractCarriers() as $packeteryAbstractCarrier) {
+        foreach ($this->getPacketeryAbstractCarriers() as $carrier) {
             $carrierMethods = Methods::getAll();
-            $countries = array_merge($countries, $packeteryAbstractCarrier->getPacketeryBrain()->getAvailableCountries($carrierMethods));
+            $countries = array_merge($countries, $carrier->getPacketeryBrain()->getAvailableCountries($carrierMethods));
         }
 
         return array_unique($countries);
     }
 
 
-    private function getDynamicCarrier(AbstractCarrier $carrier, int $dynamicCarrierId): ?\Packetery\Checkout\Model\Carrier {
-        /** @var Brain $packetaDynamicBrain */
-        $packetaDynamicBrain = $carrier->getPacketeryBrain();
-
-        return $packetaDynamicBrain->getDynamicCarrierById($dynamicCarrierId);
+    private function getDynamicCarrier(\Packetery\Checkout\Model\Carrier\Imp\PacketeryPacketaDynamic\Carrier $carrier, int $dynamicCarrierId): ?\Packetery\Checkout\Model\Carrier
+    {
+        return $carrier->getPacketeryBrain()->getDynamicCarrierById($dynamicCarrierId);
     }
 
     /**
      * @param string $carrierCode
      * @return \Packetery\Checkout\Model\Carrier\AbstractCarrier
      */
-    private function getMagentoCarrier(string $carrierCode): AbstractCarrier {
+    private function getMagentoCarrier(string $carrierCode): AbstractCarrier
+    {
         return $this->carrierFactory->get($carrierCode);
     }
 
     /**
      * @return array
      */
-    public static function getAllImplementedBranchIds(): array {
+    public static function getAllImplementedBranchIds(): array
+    {
         $branchIds = [];
         $dirs = glob(__DIR__ . '/Imp/*', GLOB_ONLYDIR);
         foreach ($dirs as $dir) {
@@ -146,7 +146,8 @@ class Facade
     }
 
 
-    public function getMaxWeight(string $carrierCode): ?float {
+    public function getMaxWeight(string $carrierCode): ?float
+    {
         $carrier = $this->getMagentoCarrier($carrierCode);
         return $carrier->getPacketeryConfig()->getMaxWeight();
     }
