@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace Packetery\Checkout\Model\Carrier\Imp\PacketeryPacketaDynamic;
 
-use Packetery\Checkout\Model\Carrier\AbstractDynamicCarrier;
+use Magento\Quote\Model\Quote\Address\RateRequest;
+use Magento\Shipping\Model\Rate\Result;
+use Packetery\Checkout\Model\Carrier\AbstractCarrier;
+use Packetery\Checkout\Model\Carrier\Config\AbstractConfig;
+use Packetery\Checkout\Model\Carrier\Config\AbstractMethodSelect;
+use Packetery\Checkout\Model\Carrier\Methods;
 
 class Brain extends \Packetery\Checkout\Model\Carrier\AbstractBrain
 {
-    /** @var \Packetery\Checkout\Model\Carrier\Imp\PacketeryPacketaDynamic\MethodSelect */
+    /** @var MethodSelect */
     private $methodSelect;
 
     /** @var \Packetery\Checkout\Model\ResourceModel\Carrier\CollectionFactory */
@@ -23,17 +28,17 @@ class Brain extends \Packetery\Checkout\Model\Carrier\AbstractBrain
      * @param \Magento\Framework\App\Request\Http $httpRequest
      * @param \Packetery\Checkout\Model\Pricing\Service $pricingService
      * @param \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
-     * @param \Packetery\Checkout\Model\Carrier\Imp\PacketeryPacketaDynamic\MethodSelect $methodSelect
+     * @param MethodSelect $methodSelect
      * @param \Packetery\Checkout\Model\ResourceModel\Carrier\CollectionFactory $carrierCollectionFactory
      * @param \Magento\Shipping\Model\Rate\ResultFactory $rateResultFactory
      */
     public function __construct(
-        \Magento\Framework\App\Request\Http $httpRequest,
-        \Packetery\Checkout\Model\Pricing\Service $pricingService,
-        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
-        \Packetery\Checkout\Model\Carrier\Imp\PacketeryPacketaDynamic\MethodSelect $methodSelect,
-        \Packetery\Checkout\Model\ResourceModel\Carrier\CollectionFactory $carrierCollectionFactory,
-        \Magento\Shipping\Model\Rate\ResultFactory $rateResultFactory
+      \Magento\Framework\App\Request\Http $httpRequest,
+      \Packetery\Checkout\Model\Pricing\Service $pricingService,
+      \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
+      MethodSelect $methodSelect,
+      \Packetery\Checkout\Model\ResourceModel\Carrier\CollectionFactory $carrierCollectionFactory,
+      \Magento\Shipping\Model\Rate\ResultFactory $rateResultFactory
     ) {
         parent::__construct($httpRequest, $pricingService, $scopeConfig);
         $this->methodSelect = $methodSelect;
@@ -45,7 +50,8 @@ class Brain extends \Packetery\Checkout\Model\Carrier\AbstractBrain
      * @param \Packetery\Checkout\Model\Carrier\AbstractCarrier $carrier
      * @return Config
      */
-    public function createConfig(\Packetery\Checkout\Model\Carrier\AbstractCarrier $carrier): \Packetery\Checkout\Model\Carrier\Config\AbstractConfig {
+    public function createConfig(\Packetery\Checkout\Model\Carrier\AbstractCarrier $carrier): AbstractConfig
+    {
         return new Config($this->getConfigData($carrier->getCarrierCode(), $carrier->getStore()));
     }
 
@@ -58,7 +64,7 @@ class Brain extends \Packetery\Checkout\Model\Carrier\AbstractBrain
 
     /** Represents all possible methods for all dynamic carriers
      *
-     * @return \Packetery\Checkout\Model\Carrier\Imp\PacketeryPacketaDynamic\MethodSelect
+     * @return MethodSelect
      */
     public function getMethodSelect(): \Packetery\Checkout\Model\Carrier\Config\AbstractMethodSelect {
         return $this->methodSelect;
@@ -78,17 +84,10 @@ class Brain extends \Packetery\Checkout\Model\Carrier\AbstractBrain
         return false;
     }
 
-    /**
-     * @param int|null $dynamicCarrierId
-     * @return \Packetery\Checkout\Model\Carrier|null
-     */
-    public function getDynamicCarrierById(?int $dynamicCarrierId): ?AbstractDynamicCarrier {
-        $model = $this->carrierCollectionFactory->create()->getItemByColumnValue('carrier_id', $dynamicCarrierId);
-        if ($model === null) {
-            return null;
-        }
 
-        return new DynamicCarrier($model);
+    public function getDynamicCarrierById(int $dynamicCarrierId): ?\Packetery\Checkout\Model\Carrier {
+
+        return $this->carrierCollectionFactory->create()->getItemByColumnValue('carrier_id', $dynamicCarrierId);
     }
 
     /**
@@ -105,7 +104,7 @@ class Brain extends \Packetery\Checkout\Model\Carrier\AbstractBrain
     /**
      * @param string $country
      * @param array $methods
-     * @return DynamicCarrier[]
+     * @return \Packetery\Checkout\Model\Carrier[]
      */
     public function findConfigurableDynamicCarriers(string $country, array $methods): array {
         /** @var \Packetery\Checkout\Model\ResourceModel\Carrier\Collection $collection */
@@ -114,23 +113,12 @@ class Brain extends \Packetery\Checkout\Model\Carrier\AbstractBrain
         $collection->whereCountry($country);
         $collection->forDeliveryMethods($methods);
         $collection->whereCarrierIdNotIn(\Packetery\Checkout\Model\Carrier\Facade::getAllImplementedBranchIds());
-        $items = $collection->getItems();
 
-        return array_map(
-            function (\Packetery\Checkout\Model\Carrier $carrier) {
-                return new DynamicCarrier($carrier);
-            },
-            $items
-        );
+        return $collection->getItems();
     }
 
-    /**
-     * @param string $method
-     * @param string $countryId
-     * @return int|null
-     * @throws \Exception
-     */
-    public function resolvePointId(string $method, string $countryId, ?AbstractDynamicCarrier $dynamicCarrier = null): ?int {
+
+    public function resolvePointId(string $method, string $countryId, ?\Packetery\Checkout\Model\Carrier $dynamicCarrier = null): ?int {
         if ($dynamicCarrier === null) {
             throw new \Exception('Dynamic carrier was not passed');
         }
@@ -142,23 +130,8 @@ class Brain extends \Packetery\Checkout\Model\Carrier\AbstractBrain
         return $dynamicCarrier->getCarrierId();
     }
 
-    /**
-     * @param \Packetery\Checkout\Model\Carrier\Config\AbstractConfig $config
-     * @param \Packetery\Checkout\Model\Carrier\AbstractDynamicCarrier|null $dynamicCarrier
-     * @return \Packetery\Checkout\Model\Carrier\Config\AbstractConfig
-     */
-    public function createDynamicConfig(\Packetery\Checkout\Model\Carrier\Config\AbstractConfig $config, ?AbstractDynamicCarrier $dynamicCarrier = null): \Packetery\Checkout\Model\Carrier\Config\AbstractConfig {
-        return new DynamicConfig(
-            $config,
-            $dynamicCarrier
-        );
-    }
 
-    /**
-     * @param string $carrierName
-     * @param \Packetery\Checkout\Model\Carrier\AbstractDynamicCarrier|null $dynamicCarrier
-     */
-    public function updateDynamicCarrierName(string $carrierName, ?AbstractDynamicCarrier $dynamicCarrier = null): void {
+    public function updateDynamicCarrierName(string $carrierName, \Packetery\Checkout\Model\Carrier $dynamicCarrier): void {
         $collection = $this->carrierCollectionFactory->create();
         $collection->addFilter('carrier_id', $dynamicCarrier->getCarrierId());
         $collection->setDataToAll(
@@ -169,22 +142,18 @@ class Brain extends \Packetery\Checkout\Model\Carrier\AbstractBrain
         $collection->save();
     }
 
-    /**
-     * @param string $method
-     * @param string $countryId
-     * @param \Packetery\Checkout\Model\Carrier\AbstractDynamicCarrier $dynamicCarrier
-     * @return bool
-     */
-    public function validateDynamicCarrier(string $method, string $countryId, ?AbstractDynamicCarrier $dynamicCarrier = null): bool {
+
+    public function validateDynamicCarrier(string $method, string $countryId, \Packetery\Checkout\Model\Carrier $dynamicCarrier): bool {
         if ($dynamicCarrier->getDeleted() === true) {
             return false;
         }
 
-        if ($dynamicCarrier->getCountryId() !== $countryId) {
+        // todo: nevím, jestli můžu smazat, obávám se, že se tímto způsobem rozhoduje v collectRates a resolvePoint jestli je dyn carrier dostupný pro zadanou zemi
+        if ($dynamicCarrier->getCountry() !== $countryId) {
             return false;
         }
 
-        if (in_array($method, $dynamicCarrier->getMethods()) === false) {
+        if ($method !== $dynamicCarrier->getMethod()) {
             return false;
         }
 
@@ -200,5 +169,50 @@ class Brain extends \Packetery\Checkout\Model\Carrier\AbstractBrain
         $collection = $this->carrierCollectionFactory->create();
         $collection->forDeliveryMethods($methods);
         return $collection->getColumnValues('country');
+    }
+
+
+    public function collectRatesDynamic(AbstractCarrier $carrier, RateRequest $request, \Packetery\Checkout\Model\Carrier $dynamicCarrier): ?Result
+    {
+        /** @var Config $config */
+        $config = $carrier->getPacketeryConfig();
+
+        $dynamicConfig = new DynamicConfig(
+          $config,
+          $dynamicCarrier
+        );
+
+        if (!$this->isCollectionPossible($dynamicConfig)) {
+            return null;
+        }
+
+        $methods = [];
+        foreach ($this->getFinalAllowedMethodsDynamic($config, $dynamicConfig, $this->getMethodSelect()) as $selectedMethod) {
+            if ($this->isAvailableForCollection($selectedMethod, $request->getDestCountryId(), $dynamicCarrier) === false) {
+                continue;
+            }
+
+            $methods[$selectedMethod] = $this->getMethodSelect()->getLabelByValue($selectedMethod);
+        }
+
+        return $this->pricingService->collectRates($request, $carrier->getCarrierCode(), $dynamicConfig, $methods, ($dynamicCarrier ? $dynamicCarrier->getCarrierId() : null));
+    }
+
+    protected function isAvailableForCollection(string $method, string $countryId, \Packetery\Checkout\Model\Carrier $dynamicCarrier): bool
+    {
+        if ($method !== Methods::PICKUP_POINT_DELIVERY) {
+            if ($this->resolvePointId($method, $countryId, $dynamicCarrier) === null) {
+                return false;
+            }
+        }
+
+        $availableCountries = $this->getAvailableCountries([$method]);
+        return in_array($countryId, $availableCountries, true) && $this->validateDynamicCarrier($method, $countryId, $dynamicCarrier);
+    }
+
+
+    public function getFinalAllowedMethodsDynamic(Config $config, DynamicConfig $dynamicConfig, AbstractMethodSelect $methodSelect): array {
+        $final = $this->getFinalAllowedMethods($config, $methodSelect);
+        return array_intersect($dynamicConfig->getAllowedMethods(), $final);
     }
 }

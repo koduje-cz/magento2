@@ -5,6 +5,7 @@ namespace Packetery\Checkout\Observer\Sales;
 use Magento\Checkout\Model\Session as CheckoutSession;
 use Magento\Framework\Exception\InputException;
 use Packetery\Checkout\Model\Carrier\AbstractBrain;
+use Packetery\Checkout\Model\Carrier\Imp\PacketeryPacketaDynamic\Brain;
 use Packetery\Checkout\Model\Carrier\MethodCode;
 use Packetery\Checkout\Model\Carrier\Methods;
 
@@ -100,10 +101,20 @@ class OrderPlaceAfter implements \Magento\Framework\Event\ObserverInterface
             } else {
                 /** @var \Packetery\Checkout\Model\Carrier\AbstractCarrier $carrier */
                 $carrier = $this->carrierFactory->create($shippingMethod['carrier_code']);
-                $pointId = $carrier->getPacketeryBrain()->resolvePointId(
+
+                $packeteryBrain = $carrier->getPacketeryBrain();
+
+                $dynamicCarrier = null;
+                $dynamicCarrierId = $deliveryMethod->getDynamicCarrierId();
+                if ($dynamicCarrierId) {
+                    /** @var Brain $packeteryBrain */
+                    $dynamicCarrier = $packeteryBrain->getDynamicCarrierById($dynamicCarrierId);
+                }
+
+                $pointId = $packeteryBrain->resolvePointId(
                     $deliveryMethod->getMethod(),
                     $order->getShippingAddress()->getCountryId(),
-                    $carrier->getPacketeryBrain()->getDynamicCarrierById($deliveryMethod->getDynamicCarrierId())
+                    $dynamicCarrier
                 );
 
                 $pointName = '';

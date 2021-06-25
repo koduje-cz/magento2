@@ -93,18 +93,18 @@ class Service
      * @param string $method
      * @param string $destCountryId
      * @param string $carrierCode
-     * @param int|null $carrierId
-     * @return \Packetery\Checkout\Model\Pricingrule|null
+     * @param int|null $dynamicCarrierId
+     * @return Pricingrule|null
      */
-    public function resolvePricingRule(string $method, string $destCountryId, string $carrierCode, ?int $carrierId = null): ?Pricingrule
+    public function resolvePricingRule(string $method, string $destCountryId, string $carrierCode, ?int $dynamicCarrierId = null): ?Pricingrule
     {
         $pricingRuleCollection = $this->pricingRuleCollectionFactory->create();
         $pricingRuleCollection->addFilter('method', $method);
         $pricingRuleCollection->addFilter('country_id', $destCountryId); // iso 2
         $pricingRuleCollection->addFilter('carrier_code', $carrierCode);
 
-        if ($carrierId !== null) {
-            $pricingRuleCollection->addFilter('carrier_id', $carrierId);
+        if ($dynamicCarrierId !== null) {
+            $pricingRuleCollection->addFilter('carrier_id', $dynamicCarrierId);
         }
 
         return ($pricingRuleCollection->getFirstRecord() ?: null);
@@ -113,7 +113,7 @@ class Service
     /**
      * @param \Magento\Quote\Model\Quote\Address\RateRequest $request
      * @param \Packetery\Checkout\Model\Carrier\Config\AbstractConfig $config
-     * @param \Packetery\Checkout\Model\Pricingrule $pricingRule
+     * @param Pricingrule $pricingRule
      * @return float|null
      */
     protected function resolvePrice(RateRequest $request, AbstractConfig $config, Pricingrule $pricingRule): ?float
@@ -194,7 +194,7 @@ class Service
     }
 
     /**
-     * @param \Packetery\Checkout\Model\Pricingrule $pricingRule
+     * @param Pricingrule $pricingRule
      * @return array
      */
     public function getWeightRulesByPricingRule(Pricingrule $pricingRule): array
@@ -206,7 +206,7 @@ class Service
     }
 
     /**
-     * @param \Packetery\Checkout\Model\Pricingrule $pricingrule
+     * @param Pricingrule $pricingrule
      * @param float|null $globalFreeShipping
      * @return float|null
      */

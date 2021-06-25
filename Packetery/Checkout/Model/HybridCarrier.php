@@ -12,14 +12,8 @@ use Packetery\Checkout\Model\Misc\ComboPhrase;
  */
 class HybridCarrier extends \Magento\Framework\DataObject
 {
-    /**
-     * @param \Packetery\Checkout\Model\Carrier\AbstractCarrier $carrier
-     * @param \Packetery\Checkout\Model\Carrier\AbstractDynamicCarrier $dynamicCarrier
-     * @param string $method
-     * @param string $country
-     * @return \Packetery\Checkout\Model\HybridCarrier
-     */
-    public static function fromAbstractDynamic(\Packetery\Checkout\Model\Carrier\AbstractCarrier $carrier, \Packetery\Checkout\Model\Carrier\AbstractDynamicCarrier $dynamicCarrier, string $method, string $country) {
+
+    public static function fromAbstractDynamic(\Packetery\Checkout\Model\Carrier\AbstractCarrier $carrier, \Packetery\Checkout\Model\Carrier $dynamicCarrier, string $method, string $country): self {
         $hybridCarrier = new self();
         $hybridCarrier->setData('carrier_code', $carrier->getCarrierCode());
         $hybridCarrier->setData('carrier_id', $dynamicCarrier->getCarrierId());

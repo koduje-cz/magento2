@@ -50,8 +50,8 @@ class PricingruleRepository
      */
     public function validateDuplicateCountry(array $postData): bool
     {
-        $carrierId = (isset($postData['carrier_id']) ? (int)$postData['carrier_id'] : null);
-        $resolvedPricingRule = $this->pricingService->resolvePricingRule($postData['method'], $postData['country_id'], $postData['carrier_code'], $carrierId);
+        $dynamicCarrierId = (isset($postData['carrier_id']) ? (int)$postData['carrier_id'] : null);
+        $resolvedPricingRule = $this->pricingService->resolvePricingRule($postData['method'], $postData['country_id'], $postData['carrier_code'], $dynamicCarrierId);
 
         if (isset($postData['id']) && $resolvedPricingRule !== null && $resolvedPricingRule->getId() == $postData['id']) {
             return true;
@@ -108,7 +108,7 @@ class PricingruleRepository
             throw new \Packetery\Checkout\Model\Exception\DuplicateCountry();
         }
 
-        $maxWeight = $this->carrierFacade->getMaxWeight($postData['carrier_code'], $postData['carrier_id']);
+        $maxWeight = $this->carrierFacade->getMaxWeight($postData['carrier_code']);
         if (!$this->validatePricingRuleMaxWeight($weightRules, $maxWeight)) {
             throw new \Packetery\Checkout\Model\Exception\InvalidMaxWeight();
         }

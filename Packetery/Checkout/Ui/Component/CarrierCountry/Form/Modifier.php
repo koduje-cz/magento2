@@ -58,44 +58,36 @@ class Modifier implements ModifierInterface
         usort(
             $staticCarriers,
             function (Carrier\AbstractCarrier $staticCarrier) {
-                if ($staticCarrier instanceof Carrier\Imp\Packetery\Carrier) {
-                    return 1; // Packetery is always first
-                }
-
-                return 0;
+                return $staticCarrier instanceof Carrier\Imp\Packetery\Carrier;             // Packetery is always first
             }
         );
 
-        foreach ($staticCarriers as $packeteryAbstractCarrier) {
-            $packeteryAbstractCarrierBrain = $packeteryAbstractCarrier->getPacketeryBrain();
-            $methods = $packeteryAbstractCarrierBrain->getMethodSelect()->getMethods();
+        foreach ($staticCarriers as $staticCarrier) {
+            $packeteryBrain = $staticCarrier->getPacketeryBrain();
+            $methods = $packeteryBrain->getMethodSelect()->getMethods();
             usort(
                 $methods,
                 function (string $method) {
-                    if ($method === Methods::PICKUP_POINT_DELIVERY) {
-                        return 1; // PP methods are first in list
-                    }
-
-                    return 0;
+                    return $method === Methods::PICKUP_POINT_DELIVERY; // PP methods are first in list
                 }
             );
 
             foreach ($methods as $method) {
                 // each hybrid carrier represent form fieldset as row
-                $carriers = $packeteryAbstractCarrierBrain->findConfigurableDynamicCarriers($country, [$method]);
+                $carriers = $packeteryBrain->findConfigurableDynamicCarriers($country, [$method]);
 
-                if ($packeteryAbstractCarrierBrain->isAssignableToPricingRule()) {
+                if ($packeteryBrain->isAssignableToPricingRule()) {
                     // static carrier has no dynamic carriers
                     // static wrapping carriers are omitted
-                    $availableCountries = $packeteryAbstractCarrierBrain->getAvailableCountries([$method]);
+                    $availableCountries = $packeteryBrain->getAvailableCountries([$method]);
                     if (in_array($country, $availableCountries)) {
-                        $hybridCarrier = HybridCarrier::fromAbstract($packeteryAbstractCarrier, $method, $country);
+                        $hybridCarrier = HybridCarrier::fromAbstract($staticCarrier, $method, $country);
                         array_unshift($hybridCarriers, $hybridCarrier);
                     }
                 }
 
                 foreach ($carriers as $carrier) {
-                    $hybridCarrier = HybridCarrier::fromAbstractDynamic($packeteryAbstractCarrier, $carrier, $method, $country);
+                    $hybridCarrier = HybridCarrier::fromAbstractDynamic($staticCarrier, $carrier, $method, $country);
                     $hybridCarriers[] = $hybridCarrier;
                 }
             }
@@ -341,7 +333,7 @@ class Modifier implements ModifierInterface
      * @return array
      */
     private function getWeightRules(HybridCarrier $carrier): array {
-        $weightUpperlimit = $this->carrierFacade->getMaxWeight($carrier->getCarrierCode(), $carrier->getCarrierId());
+        $weightUpperlimit = $this->carrierFacade->getMaxWeight($carrier->getCarrierCode());
 
         $configRow = [
             'arguments' => [
@@ -490,14 +482,14 @@ class Modifier implements ModifierInterface
 
             $carrierCode = $carrier->getData('carrier_code');
             $method = $carrier->getData('method');
-            $carrierId = ($carrier->getData('carrier_id') ? (int)$carrier->getData('carrier_id') : null);
+            $dynamicCarrierId = ($carrier->getData('carrier_id') ? (int)$carrier->getData('carrier_id') : null);
 
             $shippingMethod['carrier_name'] = $carrier->getFinalCarrierName();
-            $resolvedPricingRule = $this->pricingService->resolvePricingRule($method, $country, $carrierCode, $carrierId);
+            $resolvedPricingRule = $this->pricingService->resolvePricingRule($method, $country, $carrierCode, $dynamicCarrierId);
 
             $shippingMethod['enabled'] = '0';
             $pricingRule['carrier_code'] = $carrierCode;
-            $pricingRule['carrier_id'] = $carrierId;
+            $pricingRule['carrier_id'] = $dynamicCarrierId;
             $pricingRule['country_id'] = $country;
             $pricingRule['method'] = $method;
 

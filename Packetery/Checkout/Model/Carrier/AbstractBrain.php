@@ -7,7 +7,6 @@ namespace Packetery\Checkout\Model\Carrier;
 use Magento\Quote\Model\Quote\Address\RateRequest;
 use Magento\Shipping\Model\Rate\Result;
 use Packetery\Checkout\Model\Carrier\Config\AbstractConfig;
-use Packetery\Checkout\Model\Carrier\Config\AbstractDynamicConfig;
 use Packetery\Checkout\Model\Carrier\Config\AbstractMethodSelect;
 
 /**
@@ -46,18 +45,10 @@ abstract class AbstractBrain
 
     /**
      * @param \Packetery\Checkout\Model\Carrier\AbstractCarrier $carrier
-     * @return \Packetery\Checkout\Model\Carrier\Config\AbstractConfig
+     * @return AbstractConfig
      */
-    abstract public function createConfig(AbstractCarrier $carrier): \Packetery\Checkout\Model\Carrier\Config\AbstractConfig;
+    abstract public function createConfig(AbstractCarrier $carrier): AbstractConfig;
 
-    /**
-     * @param \Packetery\Checkout\Model\Carrier\Config\AbstractConfig $config
-     * @param \Packetery\Checkout\Model\Carrier|null $dynamicCarrier
-     * @return \Packetery\Checkout\Model\Carrier\Config\AbstractConfig
-     */
-    public function createDynamicConfig(AbstractConfig $config, ?AbstractDynamicCarrier $dynamicCarrier = null): AbstractConfig {
-        return $config;
-    }
 
     /** Can pricing rule be attached to abstract carrier of this namespace
      * @return bool
@@ -111,39 +102,12 @@ abstract class AbstractBrain
      */
     abstract protected static function getResolvableDestinationData(): array;
 
-    /**
-     * @param string $method
-     * @param string $countryId
-     * @param \Packetery\Checkout\Model\Carrier\AbstractDynamicCarrier|null $dynamicCarrier
-     * @return int|null
-     */
-    public function resolvePointId(string $method, string $countryId, ?AbstractDynamicCarrier $dynamicCarrier = null): ?int {
+
+    public function resolvePointId(string $method, string $countryId, ?\Packetery\Checkout\Model\Carrier $dynamicCarrier = null): ?int {
         $data = $this::getResolvableDestinationData();
         return ($data[$method]['countryBranchIds'][$countryId] ?? null);
     }
 
-    /**
-     * @param string $carrierName
-     * @param \Packetery\Checkout\Model\Carrier\AbstractDynamicCarrier|null $dynamicCarrier
-     */
-    public function updateDynamicCarrierName(string $carrierName, ?AbstractDynamicCarrier $dynamicCarrier = null): void {}
-
-    /** Used only by Packeta Dynamic
-     *
-     * @param int $id
-     * @return \Packetery\Checkout\Model\Carrier\AbstractDynamicCarrier|null
-     */
-    public function getDynamicCarrierById(?int $id): ?AbstractDynamicCarrier {
-        return null; // majority of Magento carriers do not have dynamic carriers
-    }
-
-    /**
-     * @param \Packetery\Checkout\Model\Carrier\AbstractDynamicCarrier $dynamicCarrier
-     * @return bool
-     */
-    public function validateDynamicCarrier(string $method, string $countryId, ?AbstractDynamicCarrier $dynamicCarrier = null): bool {
-        return true;
-    }
 
     /** What Mordor branch ids does carrier implement
      * @return array
@@ -152,55 +116,24 @@ abstract class AbstractBrain
         return [];
     }
 
-    /**
-     * @param string $method
-     * @param string $countryId
-     * @param \Packetery\Checkout\Model\Carrier\AbstractDynamicCarrier|null $dynamicCarrier
-     * @return bool
-     */
-    protected function isAvailableForCollection(string $method, string $countryId, ?AbstractDynamicCarrier $dynamicCarrier = null): bool {
-        if ($method !== Methods::PICKUP_POINT_DELIVERY) {
-            if ($this->resolvePointId($method, $countryId, $dynamicCarrier) === null) {
-                return false;
-            }
-        }
 
-        $availableCountries = $this->getAvailableCountries([$method]);
-        return in_array($countryId, $availableCountries) && $this->validateDynamicCarrier($method, $countryId, $dynamicCarrier);
-    }
+    public function collectRates(AbstractCarrier $carrier, RateRequest $request): ?Result {
+        $config = $carrier->getPacketeryConfig();
 
-    /**
-     * @param \Packetery\Checkout\Model\Carrier\AbstractCarrier $carrier
-     * @param \Magento\Quote\Model\Quote\Address\RateRequest $request
-     * @param \Packetery\Checkout\Model\Carrier\AbstractDynamicCarrier|null $dynamicCarrier
-     * @return \Magento\Shipping\Model\Rate\Result|null
-     */
-    public function collectRates(AbstractCarrier $carrier, RateRequest $request, ?AbstractDynamicCarrier $dynamicCarrier = null): ?Result {
-        $brain = $carrier->getPacketeryBrain();
-
-        $config = $this->createDynamicConfig(
-            $carrier->getPacketeryConfig(),
-            $dynamicCarrier
-        );
-
-        if (!$brain->isCollectionPossible($config)) {
+        if (!$this->isCollectionPossible($config)) {
             return null;
         }
 
         $methods = [];
-        foreach ($this->getFinalAllowedMethods($config, $brain->getMethodSelect()) as $selectedMethod) {
-            if ($this->isAvailableForCollection($selectedMethod, $request->getDestCountryId(), $dynamicCarrier) === false) {
-                continue;
-            }
-
-            $methods[$selectedMethod] = $brain->getMethodSelect()->getLabelByValue($selectedMethod);
+        foreach ($this->getFinalAllowedMethods($config, $this->getMethodSelect()) as $selectedMethod) {
+            $methods[$selectedMethod] = $this->getMethodSelect()->getLabelByValue($selectedMethod);
         }
 
-        return $this->pricingService->collectRates($request, $carrier->getCarrierCode(), $config, $methods, ($dynamicCarrier ? $dynamicCarrier->getCarrierId() : null));
+        return $this->pricingService->collectRates($request, $carrier->getCarrierCode(), $config, $methods);
     }
 
     /**
-     * @param \Packetery\Checkout\Model\Carrier\Config\AbstractConfig $config
+     * @param AbstractConfig $config
      * @return bool
      */
     public function isCollectionPossible(AbstractConfig $config): bool {
@@ -219,7 +152,7 @@ abstract class AbstractBrain
      * @param bool $configurable
      * @param string $country
      * @param array $methods
-     * @return \Packetery\Checkout\Model\Carrier\AbstractDynamicCarrier[]
+     * @return \Packetery\Checkout\Model\Carrier[]
      */
     public function findConfigurableDynamicCarriers(string $country, array $methods): array {
         return [];
@@ -229,21 +162,10 @@ abstract class AbstractBrain
      * @param array $methods
      * @return array
      */
-    public function getAvailableCountries(array $methods): array {
-        return [];
-    }
+    abstract public function getAvailableCountries(array $methods): array;
 
-    /**
-     * @param \Packetery\Checkout\Model\Carrier\Config\AbstractConfig $config
-     * @param \Packetery\Checkout\Model\Carrier\Config\AbstractMethodSelect $methodSelect
-     * @return array
-     */
+
     public function getFinalAllowedMethods(AbstractConfig $config, AbstractMethodSelect $methodSelect): array {
-        if ($config instanceof AbstractDynamicConfig) {
-            $final = $this->getFinalAllowedMethods($config->getConfig(), $methodSelect);
-            return array_intersect($config->getAllowedMethods(), $final);
-        }
-
         $allowedMethods = $config->getAllowedMethods();
         if (empty($allowedMethods)) {
             return $methodSelect->getMethods();

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Packetery\Checkout\Model\Carrier;
 
+use Packetery\Checkout\Model\Carrier\Imp\PacketeryPacketaDynamic\Brain;
 use Packetery\Checkout\Model\HybridCarrier;
 
 class Facade
@@ -26,22 +27,17 @@ class Facade
         $this->shippingConfig = $shippingConfig;
     }
 
-    /**
-     * @param string $carrierName
-     * @param string $carrierCode
-     * @param int|null $carrierId
-     * @throws \Exception
-     */
-    public function updateCarrierName(string $carrierName, string $carrierCode, ?int $carrierId = null): void {
+
+    public function updateCarrierName(string $carrierName, string $carrierCode, int $carrierId): void {
         $carrier = $this->getMagentoCarrier($carrierCode);
-        $dynamicCarrier = $this->getDynamicCarrier($carrier, $carrierId);
 
-        if ($dynamicCarrier !== null) {
-            $carrier->getPacketeryBrain()->updateDynamicCarrierName($carrierName, $dynamicCarrier);
-            return;
-        }
+        /** @var Brain $packetaDynamicBrain */
+        $packetaDynamicBrain = $carrier->getPacketeryBrain();
 
-        throw new \InvalidArgumentException('Not implemented');
+        /** @var \Packetery\Checkout\Model\Carrier $dynamicCarrier */
+        $dynamicCarrier = $packetaDynamicBrain->getDynamicCarrierById($carrierId);
+
+        $packetaDynamicBrain->updateDynamicCarrierName($carrierName, $dynamicCarrier);
     }
 
     /**
@@ -53,11 +49,15 @@ class Facade
      */
     public function createHybridCarrier(string $carrierCode, ?int $carrierId, string $method, string $country): HybridCarrier {
         $carrier = $this->getMagentoCarrier($carrierCode);
-        $dynamicCarrier = $this->getDynamicCarrier($carrier, $carrierId);
 
-        if ($dynamicCarrier !== null) {
-            return HybridCarrier::fromAbstractDynamic($carrier, $dynamicCarrier, $method, $country);
+        if ($carrierId) {
+            $dynamicCarrier = $this->getDynamicCarrier($carrier, $carrierId);
+
+            if ($dynamicCarrier !== null) {
+                return HybridCarrier::fromAbstractDynamic($carrier, $dynamicCarrier, $method, $country);
+            }
         }
+
 
         return HybridCarrier::fromAbstract($carrier, $method, $country);
     }
@@ -69,10 +69,12 @@ class Facade
      */
     public function isDynamicCarrier(string $carrierCode, $carrierId): bool {
         $carrier = $this->getMagentoCarrier($carrierCode);
-        $dynamicCarrier = $this->getDynamicCarrier($carrier, (is_numeric($carrierId) ? (int)$carrierId : null));
 
-        if ($dynamicCarrier !== null) {
-            return true;
+        if (is_numeric($carrierId)) {
+            $dynamicCarrier = $this->getDynamicCarrier($carrier, (int)$carrierId);
+            if ($dynamicCarrier !== null) {
+                return true;
+            }
         }
 
         return false;
@@ -107,12 +109,12 @@ class Facade
         return array_unique($countries);
     }
 
-    /**
-     * @param int $carrierId
-     * @return \Packetery\Checkout\Model\Carrier\AbstractDynamicCarrier|null
-     */
-    private function getDynamicCarrier(AbstractCarrier $carrier, ?int $carrierId): ?AbstractDynamicCarrier {
-        return $carrier->getPacketeryBrain()->getDynamicCarrierById($carrierId);
+
+    private function getDynamicCarrier(AbstractCarrier $carrier, int $dynamicCarrierId): ?\Packetery\Checkout\Model\Carrier {
+        /** @var Brain $packetaDynamicBrain */
+        $packetaDynamicBrain = $carrier->getPacketeryBrain();
+
+        return $packetaDynamicBrain->getDynamicCarrierById($dynamicCarrierId);
     }
 
     /**
@@ -143,14 +145,9 @@ class Facade
         return $branchIds;
     }
 
-    /**
-     * @param string $carrierCode
-     * @param int|null $carrierId
-     * @return float|null
-     */
-    public function getMaxWeight(string $carrierCode, ?int $carrierId): ?float {
+
+    public function getMaxWeight(string $carrierCode): ?float {
         $carrier = $this->getMagentoCarrier($carrierCode);
-        $dynamicCarrier = $this->getDynamicCarrier($carrier, $carrierId);
-        return $carrier->getPacketeryDynamicConfig($dynamicCarrier)->getMaxWeight();
+        return $carrier->getPacketeryConfig()->getMaxWeight();
     }
 }

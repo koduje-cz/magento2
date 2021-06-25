@@ -65,13 +65,6 @@ abstract class AbstractCarrier extends \Magento\Shipping\Model\Carrier\AbstractC
         return $this->packeteryConfig;
     }
 
-    /**
-     * @param \Packetery\Checkout\Model\Carrier\AbstractDynamicCarrier|null $dynamicCarrier
-     * @return \Packetery\Checkout\Model\Carrier\Config\AbstractConfig
-     */
-    public function getPacketeryDynamicConfig(?AbstractDynamicCarrier $dynamicCarrier = null): AbstractConfig {
-        return $this->packeteryBrain->createDynamicConfig($this->packeteryConfig, $dynamicCarrier);
-    }
 
     /**
      * getAllowedMethods

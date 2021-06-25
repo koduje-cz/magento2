@@ -40,7 +40,7 @@ class Carrier extends \Packetery\Checkout\Model\Carrier\AbstractCarrier
         $dynamicCarriers = $this->packeteryBrain->findResolvableDynamicCarriers();
 
         foreach ($dynamicCarriers as $dynamicCarrier) {
-            $dynamicCarrierResult = $this->packeteryBrain->collectRates($this, $request, new DynamicCarrier($dynamicCarrier));
+            $dynamicCarrierResult = $this->packeteryBrain->collectRatesDynamic($this, $request, $dynamicCarrier);
             if ($dynamicCarrierResult !== null) {
                 $result->append($dynamicCarrierResult);
             }
